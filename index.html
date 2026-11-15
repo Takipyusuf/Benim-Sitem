@@ -3,15 +3,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Benim İlk Sitem</title>
+    <title>Gelir & Gider Takip - Süpürge Dünyası</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px; background-color: #f4f4f9; color: #333; }
-        h1 { color: #2c3e50; }
-        p { font-size: 18px; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body>
-    <h1>Merhaba Dünya! 🚀</h1>
-    <p>Bu benim ücretsiz sunucuda yayınladığım ilk internet sitem.</p>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+    <div class="max-w-5xl mx-auto px-4 py-8">
+        
+        <!-- Üst Başlık -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b pb-4 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fa-solid fa-wallet text-blue-600"></i> Hesap & Kasa Takibi
+                </h1>
+                <p class="text-sm text-gray-500">Gelir, gider ve kasa hareketlerini tek ekrandan yönetin.</p>
+            </div>
+            <div class="flex gap-2 w-full md:w-auto">
+                <button onclick="exportData()" class="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-excel"></i> Verileri Dışa Aktar (JSON)
+                </button>
+                <label class="flex-1 md:flex-none bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow transition cursor-pointer flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-import"></i> İçe Aktar
+                    <input type="file" id="importFile" accept=".json" onchange="importData(event)" class="hidden">
+                </label>
+            </div>
+        </header>
+
+        <!-- Özet Kartları -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Toplam Gelir</p>
+                    <h3 id="totalIncome" class="text-2xl font-bold text-emerald-600 mt-1">₺0.00</h3>
+                </div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-arrow-trend-up"></i>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Toplam Gider</p>
+                    <h3 id="totalExpense" class="text-2xl font-bold text-rose-600 mt-1">₺0.00</h3>
+                </div>
+                <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-arrow-trend-down"></i>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500">Net Bakiye</p>
+                    <h3 id="netBalance" class="text-2xl font-bold text-blue-600 mt-1">₺0.00</h3>
+                </div>
+                <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ana İçerik Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- İşlem Ekleme Formu -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 lg:col-span-1 h-fit">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle text-blue-600"></i> Yeni İşlem Ekle
+                </h2>
+                <form id="transactionForm" onsubmit="addTransaction(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">İşlem Türü</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" id="typeIncome" onclick="setType('gelir')" class="py-2.5 text-sm font-medium rounded-lg border border-emerald-500 text-emerald-600 bg-emerald-50 transition">Gelir</button>
+                            <button type="button" id="typeExpense" onclick="setType('gider')" class="py-2.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition">Gider</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Tutar (₺)</label>
+                        <input type="number" step="0.01" id="amount" required placeholder="0.00" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-800">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Kategori</label>
+                        <select id="category" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-gray-800">
+                            <!-- Dinamik dolaracak -->
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Açıklama</label>
+                        <input type="text" id="description" required placeholder="Örn: Süpürge tamiri / Kargo ödemesi" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-800">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Tarih</label>
+                        <input type="date" id="date" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-800">
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg shadow transition">
+                        İşlemi Kaydet
+                    </button>
+                </form>
+            </div>
+
+            <!-- İşlem Listesi ve Filtreler -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 lg:col-span-2">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <i class="fa-solid fa-list text-blue-600"></i> Son İşlemler
+                    </h2>
+                    
+                    <!-- Filtreler -->
+                    <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                        <select id="filterType" onchange="renderApp()" class="px-3 py-1.5 text-sm border rounded-lg bg-white text-gray-700 focus:outline-none">
+                            <option value="all">Tüm Türler</option>
+                            <option value="gelir">Gelirler</option>
+                            <option value="gider">Giderler</option>
+                        </select>
+                        <input type="text" id="searchKeyword" oninput="renderApp()" placeholder="Ara..." class="px-3 py-1.5 text-sm border rounded-lg text-gray-700 focus:outline-none w-36">
+                    </div>
+                </div>
+
+                <!-- Tablo -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b text-xs font-semibold text-gray-500 uppercase bg-gray-50/50">
+                                <th class="py-3 px-4">Tarih</th>
+                                <th class="py-3 px-4">Açıklama</th>
+                                <th class="py-3 px-4">Kategori</th>
+                                <th class="py-3 px-4 text-right">Tutar</th>
+                                <th class="py-3 px-4 text-center">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionTableBody" class="divide-y text-sm">
+                            <!-- Dinamik dolaracak -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="emptyState" class="hidden text-center py-12 text-gray-400">
+                    <i class="fa-solid fa-folder-open text-4xl mb-2"></i>
+                    <p>Henüz kayıtlı işlem bulunmuyor.</p>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Script Yönetimi -->
+    <script>
+        let currentType = 'gelir';
+        let transactions = JSON.parse(localStorage.getItem('supurge_transactions')) || [];
+
+        const categories = {
+            gelir: ['Tamir Hizmeti', 'Parça Satışı', 'E-Ticaret / Giyim', 'Diğer Gelir'],
+            gider: ['Yedek Parça Alımı', 'Kargo / Gönderim', 'Kira / Faturalar', 'Mal Alımı', 'Diğer Gider']
+        };
+
+        // Sayfa açıldığında
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('date').valueAsDate = new Date();
+            updateCategoryOptions();
+            renderApp();
+        });
+
+        function setType(type) {
+            currentType = type;
+            const btnGelir = document.getElementById('typeIncome');
+            const btnGider = document.getElementById('typeExpense');
+
+            if (type === 'gelir') {
+                btnGelir.className = "py-2.5 text-sm font-medium rounded-lg border border-emerald-500 text-emerald-600 bg-emerald-50 transition";
+                btnGider.className = "py-2.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition";
+            } else {
+                btnGider.className = "py-2.5 text-sm font-medium rounded-lg border border-rose-500 text-rose-600 bg-rose-50 transition";
+                btnGelir.className = "py-2.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition";
+            }
+            updateCategoryOptions();
+        }
+
+        function updateCategoryOptions() {
+            const select = document.getElementById('category');
+            select.innerHTML = '';
+            categories[currentType].forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                select.appendChild(opt);
+            });
+        }
+
+        function addTransaction(e) {
+            e.preventDefault();
+            const amount = parseFloat(document.getElementById('amount').value);
+            const category = document.getElementById('category').value;
+            const description = document.getElementById('description').value;
+            const date = document.getElementById('date').value;
+
+            const newTx = {
+                id: Date.now(),
+                type: currentType,
+                amount,
+                category,
+                description,
+                date
+            };
+
+            transactions.unshift(newTx);
+            saveAndRender();
+
+            // Formu sıfırla
+            document.getElementById('amount').value = '';
+            document.getElementById('description').value = '';
+            document.getElementById('date').valueAsDate = new Date();
+        }
+
+        function deleteTransaction(id) {
+            if (confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
+                transactions = transactions.filter(t => t.id !== id);
+                saveAndRender();
+            }
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('supurge_transactions', JSON.stringify(transactions));
+            renderApp();
+        }
+
+        function renderApp() {
+            const filterType = document.getElementById('filterType').value;
+            const searchKeyword = document.getElementById('searchKeyword').value.toLowerCase();
+
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            const tbody = document.getElementById('transactionTableBody');
+            tbody.innerHTML = '';
+
+            const filtered = transactions.filter(t => {
+                const matchesType = filterType === 'all' || t.type === filterType;
+                const matchesSearch = t.description.toLowerCase().includes(searchKeyword) || t.category.toLowerCase().includes(searchKeyword);
+                return matchesType && matchesSearch;
+            });
+
+            // Genel özet hesaplama (Filtreden bağımsız tüm liste üzerinden)
+            transactions.forEach(t => {
+                if (t.type === 'gelir') totalIncome += t.amount;
+                else totalExpense += t.amount;
+            });
+
+            document.getElementById('totalIncome').textContent = formatMoney(totalIncome);
+            document.getElementById('totalExpense').textContent = formatMoney(totalExpense);
+            
+            const net = totalIncome - totalExpense;
+            const netEl = document.getElementById('netBalance');
+            netEl.textContent = formatMoney(net);
+            netEl.className = `text-2xl font-bold mt-1 ${net >= 0 ? 'text-blue-600' : 'text-rose-600'}`;
+
+            const emptyState = document.getElementById('emptyState');
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                filtered.forEach(t => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50/50 transition border-b last:border-none";
+                    tr.innerHTML = `
+                        <td class="py-3 px-4 text-gray-500 whitespace-nowrap">${formatDate(t.date)}</td>
+                        <td class="py-3 px-4 font-medium text-gray-900">${escapeHtml(t.description)}</td>
+                        <td class="py-3 px-4 text-gray-600"><span class="px-2 py-1 text-xs rounded-md bg-gray-100">${escapeHtml(t.category)}</span></td>
+                        <td class="py-3 px-4 text-right font-semibold ${t.type === 'gelir' ? 'text-emerald-600' : 'text-rose-600'}">
+                            ${t.type === 'gelir' ? '+' : '-'}${formatMoney(t.amount)}
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="deleteTransaction(${t.id})" class="text-gray-400 hover:text-rose-600 transition p-1" title="Sil">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function formatMoney(amount) {
+            return '₺' + amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatDate(dateStr) {
+            const parts = dateStr.split('-');
+            if(parts.length !== 3) return dateStr;
+            return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `kasa_verileri_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        transactions = imported;
+                        saveAndRender();
+                        alert('Veriler başarıyla içe aktarıldı.');
+                    } else {
+                        alert('Geçersiz dosya formatı.');
+                    }
+                } catch (err) {
+                    alert('Dosya okunamadı.');
+                }
+            };
+            reader.readAsText(file);
+        }
+    </script>
 </body>
 </html>
